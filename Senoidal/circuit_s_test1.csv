@@ -1,0 +1,4 @@
+Ramo,nó saída,nó chegada,R(Ohm),Xl(Ohm),Xc(Ohm),Vind(V),Fase_Vind,Iind(A),Fase_Iind
+1,1,2,10,0,0,0,0,-8,0
+2,1,2,6,8,0,0,0,0,0
+3,1,2,0,0,5,0,0,0,0
