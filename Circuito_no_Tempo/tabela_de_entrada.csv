@@ -1,0 +1,4 @@
+Ramo,nó saída,nó chegada,R(Ohm),L(H),I0(A),C(F),V0(V),Tipo_Fonte_de_Tensão,Vind(V),Fase_V,Iind(A),Fase_I,Freq(w)
+1,1,2,10,1e-3,0,0,0,1,10,0,0,0,0
+2,1,2,0,0,0,10e-6,0,0,0,0,0,0,0
+3,1,2,10,1e-3,0,0,0,0,0,0,0,0,0
