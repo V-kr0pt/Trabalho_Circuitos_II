@@ -3,9 +3,10 @@ clear
 
 %declarando s como variável simbólica
 syms s;
+syms t;
 
 %Receber arquivo csv e transformar a matriz de entrada para o formato sym
-dados = csvread('tabela_de_entrada.csv',1,0);
+dados = csvread('tabela_de_entrada _senoidal.csv',1,0);
 
 % matriz dos nós
 nos = double(dados(:,2:3))
@@ -31,7 +32,7 @@ end
 
 % ----------Mauricio-------
 
-%matriz reduzida
+%matriz de incidência reduzida
 
 % como matriz_inc_completa é LD, podemos trabalhar com
 % com uma matriz reduzida (A), retirando a última linha
@@ -40,7 +41,7 @@ A = matriz_inc_completa(1:end-1,:)
 %A transposta da matriz reduzida:
 A_T = transpose(A) 
 
-% Matriz de admitância Yb:
+% Matriz de admitância de ramo Yb:
 
 %impedância resultante para cada ramo:
 
@@ -50,8 +51,8 @@ R = double(dados(:, 4))
 L = double(dados(:,5))
 Xl = s * L
 %capacitiva
-Xc = 1/(s*double(dados(:,7)))
-Xc = transpose(Xc)
+C = double(dados(:,7))
+Xc = 1./(s*C)
 Xc(Xc(:) == Inf)=0
 
 %impedância equivalente 
@@ -59,7 +60,7 @@ Zeq = R + Xl + Xc
 
 %admitância equivalente
 Yeq = 1./Zeq(:)
-Yeq(Yeq(:) == Inf)=0
+
 %Criando a matriz admitância de ramo: Yb (diagonal)
 Yb = diag(Yeq)
 
@@ -69,14 +70,41 @@ Yn = A * Yb * A_T
 
 % -- Fontes de Independentes --
 
-%Fontes de tensão
-%coluna 9: Vind, coluna 8: V0
-Vs = double(dados(:,9)) + double(dados(:,8));
-%coluna 6: I0
-Vs = Vs/s + L.*double(dados(:,6))
+%coluna 9: Tipos de fontes de tensão
+for ramo = 1:numero_de_ramos
+    if dados(ramo,9) == 1
+        %Fontes Contínuas
+        %Fontes de tensão 
+        %coluna 10: Vind, coluna 8: V0
+        Vs = dados(:,10) + dados(:,8);
+        %coluna 6: I0
+        Vs = laplace(sym(Vs)) + L.*double(dados(:,6))
 
-%Fonte de corrente
-Js = double(dados(:,10))
+        %Matrix das fontes de corrente, coluna 12: Iind
+        Js = dados(:,12)
+        Js = laplace(sym(Js))
+        
+    end
+    if dados(ramo,9) == 2
+        %Fontes Senoidais
+        
+        w = dados(:,14)
+        %Fontes de tensão, coluna 10: Vind 
+        mod_Vs = dados(:,10)
+        fase_Vs = dados(:,11)
+        
+        Vs = mod_Vs .* cos(w*t + fase_Vs) 
+        Vs = laplace(sym(Vs)) + L.*double(dados(:,6))
+         
+        %Fontes de corrente, coluna 12: Iind
+        mod_Js = dados(:,12)
+        fase_Js = dados(:,13)
+        Js = mod_Js .* cos(w*t + fase_Js) 
+        Js = laplace(sym(Js))
+    end
+end
+
+
 
 %-------Vitor
 
@@ -104,54 +132,73 @@ v = ilaplace(V)
 e = ilaplace(E)
 
 %gráficos
-t = 0:0.01:10
-e_t = subs(e,t)
-v_t = subs(v,t)
-j_t = subs(j,t)
+tmax = 40e-3
+passo = 1e-4 
+t = 0:passo:tmax 
+%e_t = subs(e,t)
+%v_t = subs(v,t)
+%j_t = subs(j,t)
+
+%tensão no resistor de 10 ohms
+v0 = 10*j(3)
+v0_t = subs(v0, t)
+
+%gráfico da tensão no resistor de 10 ohm, desejado
+figure
+plot(t,v0_t)
+axis([0 tmax -60 60])
+set(gca,'FontSize',16)
+xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
+ylabel('Tensão (V)','Interpreter','LaTex','FontSize',18)
+grid()
+title ('Tensão no resistor de 10 ohms')
+
 
 %gráfico das tensões de nó
-figure
-plot(t,e_t)
-%axis([0 5 0 14])
-set(gca,'FontSize',16)
-xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
-ylabel('Tensão (V)','Interpreter','LaTex','FontSize',18)
-title ('Tensões nos nós')
-T1={}
-for i=1:numero_de_ramos
-T1(i)={strcat('E',num2str(i))};
-end
-legend(T1)
-
-
-%gráfico das tensões nos ramos
-figure
-plot(t,v_t)
-%axis([0 5 0 14])
-set(gca,'FontSize',16)
-xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
-ylabel('Tensão (V)','Interpreter','LaTex','FontSize',18)
-title ('Tensão nos ramos')
-T2={}
-for i=1:numero_de_ramos
-T2(i)={strcat('V',num2str(i))};
-end
-legend(T2)
-
-
-%gráfico das correntes nos ramos
-figure
-plot(t,j_t)
-%axis([0 5 -10 10])
-set(gca,'FontSize',16)
-xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
-ylabel('Corrente (A)','Interpreter','LaTex','FontSize',18)
-title ('Corrente nos ramos')
-T3={}
-for i=1:numero_de_ramos
-T3(i)={strcat('J',num2str(i))};
-end
-legend(T3)
-
-%-----Tiago
-
+% figure
+% plot(t,e_t)
+% axis([0 2e-4 0 6])
+% set(gca,'FontSize',16)
+% xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
+% ylabel('Tensão (V)','Interpreter','LaTex','FontSize',18)
+% title ('Tensões nos nós')
+% T1={}
+% for i=1:numero_de_ramos
+% T1(i)={strcat('E',num2str(i))};
+% end
+% grid()
+% legend(T1)
+% 
+% 
+% %gráfico das tensões nos ramos
+% figure
+% plot(t,v_t)
+% axis([0 2e-4 0 6])
+% set(gca,'FontSize',16)
+% xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
+% ylabel('Tensão (V)','Interpreter','LaTex','FontSize',18)
+% title ('Tensão nos ramos')
+% T2={}
+% for i=1:numero_de_ramos
+% T2(i)={strcat('V',num2str(i))};
+% end
+% grid()
+% legend(T2)
+% 
+% 
+% %gráfico das correntes nos ramos
+% figure
+% plot(t,j_t)
+% axis([0 2e-4 0 6])
+% set(gca,'FontSize',16)
+% xlabel('tempo (s)','Interpreter','LaTex','FontSize',18)
+% ylabel('Corrente (A)','Interpreter','LaTex','FontSize',18)
+% title ('Corrente nos ramos')
+% T3={}
+% for i=1:numero_de_ramos
+% T3(i)={strcat('J',num2str(i))};
+% end
+% legend(T3)
+% 
+% %-----Tiago
+% 
